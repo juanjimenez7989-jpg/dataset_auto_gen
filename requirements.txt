@@ -1,0 +1,12 @@
+# SAM 3 se instala aparte, desde su repo (ver README):
+#   pip install git+https://github.com/facebookresearch/sam3.git
+
+# Dependencias de los scripts de este repo
+numpy
+pillow
+opencv-python          # solo si usas --exportar-yolo
+tqdm                   # barra de progreso (opcional)
+huggingface_hub        # solo para descargar los pesos desde HF
+
+# Para el filtro opcional por imágenes de referencia (--referencias):
+#   torch y torchvision ya vienen con la instalación de SAM 3

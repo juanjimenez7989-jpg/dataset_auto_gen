@@ -1,0 +1,29 @@
+# --- Pesos del modelo (NO se versionan: son GB y tienen licencia propia) ---
+pesos/*
+!pesos/.gitkeep
+*.pt
+*.pth
+*.safetensors
+
+# --- Datos (cada quien trae los suyos) ---
+datos/raw/*
+!datos/raw/.gitkeep
+datos/referencias/*
+!datos/referencias/.gitkeep
+datos/salida/*
+!datos/salida/.gitkeep
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+.ipynb_checkpoints/
+
+# --- Sistema y editores ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
