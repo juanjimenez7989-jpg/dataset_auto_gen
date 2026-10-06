@@ -10,3 +10,4 @@ huggingface_hub        # solo para descargar los pesos desde HF
 
 # Para el filtro opcional por imágenes de referencia (--referencias):
 #   torch y torchvision ya vienen con la instalación de SAM 3
+ultralytics

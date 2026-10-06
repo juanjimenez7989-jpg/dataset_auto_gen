@@ -1,120 +1,286 @@
-# sam3-dataset
 
-Herramientas para generar datasets de recortes de objetos usando **SAM 3**.
-Le das un directorio de imágenes y un prompt de texto, y te regresa los objetos
-recortados, organizados por clase y listos para entrenar.
+# Dataset de Personas - Segmentación con SAM3 y YOLO26
 
-Material del curso de **Visión Artificial** (CUTLAJO).
+## Descripción
 
-## Estructura
+Este proyecto corresponde a una actividad de Visión Artificial en la que se desarrolló un dataset personalizado de personas para posteriormente entrenar un modelo de segmentación.
 
+El flujo completo utilizado fue:
+
+**Recolección de imágenes → SAM3 → generación de segmentaciones → filtrado → dataset YOLO-seg → entrenamiento YOLO26n-seg → evaluación → predicción**
+
+## Objetivo
+
+Crear un dataset con al menos 100 imágenes relacionadas con la tarea del proyecto y utilizarlo para entrenar un modelo propio de identificación o segmentación.
+
+En este caso se seleccionó la clase:
+
+**person**
+
+El objetivo final fue entrenar un modelo capaz de identificar y segmentar personas dentro de una imagen.
+
+## Dataset
+
+Se recopilaron:
+
+- **100 imágenes originales**
+- Formato principal: JPG
+- Clase: `person`
+- Imágenes procesadas: **100**
+- Imágenes en las que SAM3 encontró al menos una persona: **89**
+- Detecciones generadas inicialmente: **307**
+
+Las imágenes originales se encuentran en:
+
+```text
+datos/raw/
 ```
-sam3-dataset/
-├── scripts/
-│   ├── descargar_pesos_sam3.py     # baja y verifica los pesos
-│   └── sam3_recortar_dataset.py    # segmenta y recorta
-├── pesos/                          # sam3.pt va aquí (ignorado por git)
-├── datos/
-│   ├── raw/                        # imágenes de entrada (ignorado)
-│   ├── referencias/                # fotos del objeto buscado (ignorado, opcional)
-│   └── salida/                     # el dataset generado (ignorado)
-├── requirements.txt
-└── README.md
+
+Ejemplo:
+
+```text
+datos/raw/
+├── persona_001.jpg
+├── persona_002.jpg
+├── ...
+└── persona_100.jpg
 ```
 
-Las cuatro carpetas de datos y pesos están en `.gitignore`. El repo lleva solo
-código: los pesos pesan GB y tienen su propia licencia, y las imágenes son de
-cada quien. Los `.gitkeep` existen para que la estructura sí se clone.
+## Generación automática de anotaciones
 
-## Instalación
+Para evitar realizar manualmente la segmentación de las 100 imágenes, se utilizó **SAM 3 (Segment Anything Model 3)** con el prompt:
+
+```text
+person
+```
+
+SAM3 procesó las imágenes y generó máscaras y detecciones de las personas encontradas.
+
+La configuración utilizada para este equipo fue:
+
+- GPU: NVIDIA GeForce GTX 1660 Ti con Max-Q Design
+- CUDA: activado
+- Resolución SAM3: 1008 × 1008
+- Tipo de datos: Float32
+- Clase detectada: `person`
+
+La resolución de 1008 se mantuvo porque es la configuración compatible con el backbone utilizado en esta instalación de SAM3.
+
+## Filtrado de detecciones
+
+Después de generar las detecciones se aplicaron filtros para reducir detecciones pequeñas o de baja confianza.
+
+Criterios utilizados:
+
+```text
+Score mínimo: 0.70
+Área mínima: 0.005
+```
+
+Resultados:
+
+- Detecciones iniciales: **307**
+- Detecciones conservadas después del filtrado: **231**
+
+Los resultados y metadatos originales de este procesamiento se encuentran localmente en:
+
+```text
+datos/salida/final/
+```
+
+El archivo principal de metadatos es:
+
+```text
+datos/salida/final/metadatos.csv
+```
+
+## Dataset para entrenamiento
+
+Las máscaras generadas por SAM3 se utilizaron para construir un dataset compatible con **YOLO-seg**.
+
+La estructura utilizada fue:
+
+```text
+datos/salida/yolo_personas/yolo/
+├── images/
+│   ├── train/
+│   └── val/
+├── labels/
+│   ├── train/
+│   └── val/
+└── data.yaml
+```
+
+La clase utilizada es:
+
+```text
+0: person
+```
+
+Después del filtrado y de la separación, el conjunto utilizado por YOLO quedó distribuido en:
+
+- **66 imágenes para entrenamiento**
+- **17 imágenes para validación**
+
+## Entrenamiento
+
+Se entrenó un modelo:
+
+```text
+YOLO26n-seg
+```
+
+utilizando Ultralytics.
+
+Configuración principal:
+
+```text
+Modelo base: yolo26n-seg.pt
+Épocas máximas: 100
+Tamaño de imagen: 640 × 640
+Batch: 2
+GPU: NVIDIA GeForce GTX 1660 Ti
+Workers: 0
+Early Stopping: 20
+AMP: desactivado
+```
+
+Aunque se establecieron 100 épocas máximas, el entrenamiento terminó anticipadamente mediante Early Stopping.
+
+El mejor resultado se obtuvo en:
+
+```text
+Época 10
+```
+
+El entrenamiento finalizó después de:
+
+```text
+30 épocas
+```
+
+El modelo generado se guardó como:
+
+```text
+runs/segment/entrenamientos/personas_seg-3/weights/best.pt
+```
+
+## Resultados de validación
+
+Resultados obtenidos realmente durante la validación:
+
+### Detección de cajas
+
+| Métrica | Resultado |
+|---|---:|
+| Precision | 0.772 |
+| Recall | 0.507 |
+| mAP50 | 0.594 |
+| mAP50-95 | 0.346 |
+
+### Segmentación de máscaras
+
+| Métrica | Resultado |
+|---|---:|
+| Precision | 0.851 |
+| Recall | 0.478 |
+| mAP50 | 0.565 |
+| mAP50-95 | 0.326 |
+
+Para este proyecto, las métricas de máscaras son las más importantes porque el objetivo principal es la segmentación.
+
+## Evidencia
+
+La evidencia generada durante el proyecto incluye:
+
+- Dataset original de 100 imágenes.
+- Mosaico de detecciones generado por SAM3.
+- Archivo `metadatos.csv`.
+- Dataset YOLO-seg.
+- Gráficas de entrenamiento.
+- Matriz de confusión.
+- Modelo entrenado `best.pt`.
+- Imagen de predicción realizada con el modelo entrenado.
+
+## Flujo del proyecto
+
+```text
+100 imágenes
+      ↓
+Dataset personalizado
+      ↓
+SAM 3
+      ↓
+Detección y segmentación automática
+      ↓
+307 detecciones
+      ↓
+Filtrado
+      ↓
+231 detecciones conservadas
+      ↓
+Dataset YOLO-seg
+      ↓
+66 imágenes train
+17 imágenes val
+      ↓
+YOLO26n-seg
+      ↓
+Entrenamiento
+      ↓
+Modelo personalizado
+      ↓
+Predicción y segmentación de personas
+```
+
+## Scripts principales
+
+### `scripts/descargar_personas.py`
+
+Script utilizado para apoyar la recopilación de imágenes del dataset.
+
+### `scripts/sam3_recortar_dataset.py`
+
+Procesa las imágenes mediante SAM3, genera las detecciones y permite obtener resultados y anotaciones para el dataset.
+
+### `scripts/entrenar_personas.py`
+
+Contiene la configuración utilizada para entrenar el modelo de segmentación.
+
+## Reproducibilidad
+
+Instalar las dependencias:
 
 ```bash
-git clone <url-del-repo>
-cd sam3-dataset
-
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-
-pip install git+https://github.com/facebookresearch/sam3.git
 pip install -r requirements.txt
 ```
 
-Requiere Python >= 3.12 y GPU con CUDA. En CPU funciona, pero es muy lento.
-
-## Pesos del modelo
-
-1. Pide acceso en https://huggingface.co/facebook/sam3 y espera la aprobación.
-2. Autentícate: `hf auth login`
-3. Descarga:
+Procesar las imágenes:
 
 ```bash
-python scripts/descargar_pesos_sam3.py -d pesos/
+python scripts/sam3_recortar_dataset.py
 ```
 
-Si alguien te compartió los pesos por un espejo interno (sin necesidad de
-cuenta ni token):
+Entrenar el modelo:
 
 ```bash
-python scripts/descargar_pesos_sam3.py -d pesos/ \
-    --url http://<ip-del-servidor>:8000/sam3.pt --sha256 <hash>
+python scripts/entrenar_personas.py
 ```
 
-El uso de los pesos está sujeto a la SAM License. Si los redistribuyes, tienes
-que incluir una copia de esa licencia; el script la deja junto al `.pt`.
+El entrenamiento genera los resultados dentro de la carpeta:
 
-## Uso
-
-```bash
-# 1. Pon tus imágenes en datos/raw/
-
-# 2. Calibra umbrales con pocas imágenes
-python scripts/sam3_recortar_dataset.py \
-    -i datos/raw -o datos/salida/prueba \
-    -p "casco=hard hat" \
-    --checkpoint pesos/sam3.pt --limite 20
-
-# 3. Revisa datos/salida/prueba/mosaico_*.jpg y metadatos.csv,
-#    ajusta --umbral y --area-min, y corre todo
-
-python scripts/sam3_recortar_dataset.py \
-    -i datos/raw -o datos/salida/v1 \
-    -p "casco=hard hat" -p "chaleco=safety vest" \
-    --checkpoint pesos/sam3.pt \
-    --fondo transparente --tamano 224 --exportar-yolo
+```text
+runs/
 ```
 
-Los prompts van en inglés, como frases nominales cortas. El formato
-`clase=frase` deja la carpeta en español y el prompt en el idioma del modelo.
+## Nota sobre archivos grandes
 
-Ayuda completa de cada script:
+Los pesos de SAM3 y los resultados grandes del entrenamiento no se incluyen en el repositorio.
 
-```bash
-python scripts/sam3_recortar_dataset.py --help
-python scripts/descargar_pesos_sam3.py --help
-```
+Las carpetas y archivos generados localmente que contienen resultados o pesos se mantienen fuera del control de versiones para evitar almacenar archivos innecesariamente grandes.
 
-## Salida
+## Autor
 
-```
-datos/salida/v1/
-├── recortes/
-│   ├── casco/            # un archivo por objeto
-│   └── chaleco/
-├── metadatos.csv         # score, caja, área y similitud de cada recorte
-├── mosaico_casco.jpg     # hoja de contacto para revisar de un vistazo
-├── resumen.json          # parámetros usados en la corrida
-└── yolo/                 # solo con --exportar-yolo
-    ├── images/
-    ├── labels/
-    └── data.yaml
-```
+Juan Diego Jiménez Vizcarra
 
-Revisa siempre los mosaicos antes de entrenar. SAM 3 etiqueta muy bien, pero no
-distingue variantes específicas de un objeto, así que el filtro humano sigue
-siendo parte del proceso.
-
-## Licencia
-
-El código de este repo: elige la que quieras (MIT, Apache 2.0) y agrega el
-archivo `LICENSE`. Los pesos de SAM 3 **no** están cubiertos por ella; se rigen
-por la SAM License de Meta.
+Proyecto académico de Visión Artificial.
