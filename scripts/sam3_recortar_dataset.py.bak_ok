@@ -137,9 +137,8 @@ class SegmentadorSAM3:
             checkpoint_path=checkpoint,
             load_from_HF=checkpoint is None,
         )
-        modelo = modelo.float()
         self.procesador = Sam3Processor(
-            modelo, device=dispositivo, resolution=1008, confidence_threshold=umbral
+            modelo, device=dispositivo, confidence_threshold=umbral
         )
 
     def detectar(self, imagen: Image.Image, prompts: list[tuple[str, str]]) -> list[Deteccion]:
